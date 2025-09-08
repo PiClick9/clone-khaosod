@@ -1,0 +1,550 @@
+<!DOCTYPE html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+    <title>In-Image Ad v3</title>
+    <style>
+      html,
+      body {
+        margin: 0;
+        padding: 0;
+        background: transparent;
+        overflow: hidden;
+        height: 100%;
+      }
+      body {
+        font-family: Pretendard, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
+          'Noto Sans KR', sans-serif;
+      }
+
+      /* 하단 바 */
+      .in-image-bg {
+        position: absolute;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        height: 63px;
+        background: #82c4f0;
+        transform: translateY(100%);
+        opacity: 0;
+        transition: transform 0.8s ease, opacity 0.8s ease;
+        z-index: 5;
+      }
+      .in-image-bg.visible {
+        transform: translateY(0);
+        opacity: 1;
+      }
+
+      /* 배너 본체 */
+      .in-image-ad {
+        position: absolute;
+        left: 50%;
+        bottom: 0;
+        transform: translate(-50%, 100%);
+        width: 100%;
+        max-width: 600px;
+        height: 80px;
+        background: linear-gradient(to right, #cce8fe, #cce8fe 80%, #b2ddff);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        opacity: 0;
+        z-index: 10;
+        overflow: hidden;
+        transition: transform 1s ease, opacity 1s ease, height 0.6s ease;
+        cursor: default;
+      }
+      .in-image-ad.visible {
+        transform: translate(-50%, 0);
+        opacity: 1;
+      }
+
+      /* 로고: 중앙 → 좌측 */
+      .ad-logo {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        width: 67px;
+        height: auto;
+        object-fit: contain;
+        transform: translate(-50%, -50%) scale(1);
+        opacity: 1;
+        transition: transform 1s ease, opacity 0.4s ease;
+        z-index: 12;
+      }
+      .ad-logo.to-left {
+        transform: translate(-380%, -50%) scale(1);
+      }
+      .ad-logo.hidden {
+        opacity: 0;
+      }
+
+      /* 중앙 컨텐츠(기본/호버 교체) */
+      .ad-center {
+        position: absolute;
+        left: 50%;
+        bottom: 10px;
+        transform: translateX(-50%);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        opacity: 1;
+        transition: opacity 0.8s ease, transform 0.3s ease;
+        z-index: 12;
+      }
+      .ad-center.show {
+        opacity: 1;
+      }
+      .ad-center.hover-content {
+        transform: translate(-50%, 100%);
+        bottom: 10px !important;
+        top: auto;
+        opacity: 0;
+      }
+      .ad-center.hover-content.show {
+        transform: translate(-50%, -30%);
+        bottom: auto;
+        opacity: 1;
+      }
+
+      .ad-text {
+        font-weight: 800;
+        font-size: 20px;
+        color: #004385;
+      }
+      .font-p {
+        font-weight: 800;
+        font-size: 20px;
+        color: #ed1c91;
+      }
+      .ad-cta {
+        background: #fff;
+        color: #333;
+        padding: 4px 12px;
+        font-size: 14px;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        margin-top: 6px;
+      }
+      .ad-cta:hover {
+        background: #f0f0f0;
+      }
+
+      /* 메인 제품(바텀에서 슬라이드업 → 스윙) */
+      .ad-product.main-product {
+        position: absolute;
+        right: 20px;
+        bottom: -180px;
+        width: 130px;
+        height: auto;
+        object-fit: contain;
+        opacity: 0;
+        transition: bottom 0.6s cubic-bezier(0.25, 1.5, 0.5, 1), opacity 0.4s ease;
+      }
+      .ad-product.main-product.show {
+        bottom: -1px;
+        opacity: 1;
+      }
+      .ad-product.main-product.swing {
+        animation: swing 0.6s ease-in-out infinite alternate;
+        transform-origin: bottom center;
+      }
+      .ad-product.main-product.hidden {
+        opacity: 0;
+      }
+
+      /* 호버 추가 제품들 */
+      .ad-product.left-in {
+        position: absolute;
+        left: -150px;
+        bottom: 0;
+        width: 130px;
+        opacity: 0;
+        object-fit: contain;
+        transition: left 0.3s ease, opacity 0.3s ease;
+      }
+      .ad-product.left-in.show {
+        left: 20px;
+        opacity: 1;
+      }
+      .ad-product.right-in {
+        position: absolute;
+        right: -200px;
+        bottom: 1px;
+        width: 140px;
+        transform: scale(0.8);
+        opacity: 0;
+        object-fit: contain;
+        transition: right 0.3s ease, transform 0.3s ease, opacity 0.3s ease;
+        z-index: 2;
+      }
+      .ad-product.right-in.show {
+        right: 0;
+        transform: scale(1);
+        opacity: 1;
+      }
+
+      /* 라디얼 하이라이트 */
+      .radial-bg {
+        position: absolute;
+        right: -15px;
+        bottom: 30px;
+        width: 160px;
+        height: 160px;
+        transform: scale(0.8);
+        opacity: 0;
+        transition: opacity 0.3s ease, transform 0.3s ease;
+        background: radial-gradient(#fff, transparent 50%);
+        z-index: 1;
+      }
+      .radial-bg.show {
+        opacity: 1;
+        transform: scale(1);
+      }
+
+      /* 문자 위 점 효과 */
+      .dot-top {
+        position: relative;
+        display: inline-block;
+        font-weight: 800;
+        font-size: 20px;
+        color: #ed1c91;
+      }
+      .dot-top::before {
+        content: '';
+        position: absolute;
+        top: -5px;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 5px;
+        height: 5px;
+        background: #ed1c91;
+        border-radius: 50%;
+      }
+      .word-dot {
+        white-space: nowrap;
+      }
+
+      /* 스윙 키프레임 */
+      @keyframes swing {
+        0% {
+          transform: rotate(-5deg);
+        }
+        100% {
+          transform: rotate(5deg);
+        }
+      }
+
+      /* 반응형: 텍스트 노출 방식 단순화 */
+      @media (max-width: 600px) {
+        .in-image-ad {
+          height: 80px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="in-image-bg" id="bar"></div>
+    <div class="in-image-ad" id="ad" role="region" aria-label="프로모션 배너">
+      <img class="ad-logo" id="logo" alt="브랜드 로고" />
+      <div class="ad-center" id="center">
+        <div class="ad-text" id="baseText">
+          <span class="font-p">가벼움</span>을 더하는 상큼한 <span class="font-p">한 팩!</span>
+        </div>
+        <button class="ad-cta" id="ctaBtn">구매하기</button>
+      </div>
+      <img class="ad-product main-product" id="mainProduct" alt="제품 이미지" />
+    </div>
+
+    <script>
+      (function () {
+        const qs = new URLSearchParams(location.search);
+
+        /* ===== 파라미터 (ad.html/ad2.html + showInImage 패턴 확장) ===== */
+        const P = {
+          // 이미지
+          logo: qs.get('logo') || 'https://www.maeil.com/resources/images/common/h_logo.png',
+          product:
+            qs.get('product') ||
+            'https://s3.ap-northeast-2.amazonaws.com/piclick.me.img/test/bio.png',
+          hoverLogo: qs.get('hoverLogo') || '', // 호버 중앙 상단 작은 로고 (없으면 logo 재사용)
+          leftProduct:
+            qs.get('leftProduct') ||
+            'https://s3.ap-northeast-2.amazonaws.com/piclick.me.img/test/bio2.png',
+          rightProduct:
+            qs.get('rightProduct') ||
+            'https://s3.ap-northeast-2.amazonaws.com/piclick.me.img/test/bio0.png',
+
+          // 텍스트
+          baseText: qs.get('baseText') || '가벼움을 더하는 상큼한 한 팩!',
+          ctaText: qs.get('ctaText') || '구매하기',
+          // 호버 텍스트(점-효과 단어)
+          hoverWord1: qs.get('hoverWord1') || '트리플',
+          hoverWord2: qs.get('hoverWord2') || '제로',
+          hoverLineBottom: qs.get('hoverLineBottom') || '바이오 ZERO',
+
+          // 링크/동작
+          cta: qs.get('cta') || '#', // CTA 버튼 전용 이동
+          click: qs.get('click') || '', // 배너 전체 클릭
+          imp: qs.get('imp') || '', // 노출 트래킹 픽셀
+          autohide: parseInt(qs.get('autohide') || '0', 10) || 0,
+          shake: qs.get('shake') !== '0', // CTA 흔들림 (기본 on)
+
+          // 색상 (하단 바 & 본체 배경)
+          bg: qs.get('bg') || '#82C4F0', // 하단 바
+          adBgType: (qs.get('adBgType') || '').toLowerCase(), // '', 'solid', 'gradient'
+          adBgSolid: qs.get('adBgSolid') || '#CCE8FE',
+          adBgStart: qs.get('adBgStart') || '#CCE8FE',
+          adBgEnd: qs.get('adBgEnd') || '#B2DDFF',
+
+          // 사이즈/맞춤 (옵션)
+          logoW: qs.get('logoW') || '',
+          logoH: qs.get('logoH') || '',
+          logoFit: qs.get('logoFit') || '',
+          productW: qs.get('productW') || '',
+          productH: qs.get('productH') || '',
+          productFit: qs.get('productFit') || '',
+          leftW: qs.get('leftW') || '',
+          leftH: qs.get('leftH') || '',
+          rightW: qs.get('rightW') || '',
+          rightH: qs.get('rightH') || '',
+
+          // 애니메이션 타이밍(ms)
+          tLogoLeft: parseInt(qs.get('tLogoLeft') || '1500', 10),
+          tProductUp: parseInt(qs.get('tProductUp') || '2200', 10),
+          tCenterShow: parseInt(qs.get('tCenterShow') || '3000', 10),
+          tSwingStart: parseInt(qs.get('tSwingStart') || '4000', 10),
+
+          // 배너 높이
+          baseHeight: parseInt(qs.get('baseHeight') || '80', 10), // 기본 80px
+          hoverHeight: parseInt(qs.get('hoverHeight') || '153', 10), // 호버 153px
+        };
+
+        /* ===== 엘리먼트 ===== */
+        const bar = document.getElementById('bar');
+        const ad = document.getElementById('ad');
+        const logo = document.getElementById('logo');
+        const center = document.getElementById('center');
+        const baseTextEl = document.getElementById('baseText');
+        const ctaBtn = document.getElementById('ctaBtn');
+        const mainProduct = document.getElementById('mainProduct');
+
+        /* ===== 초기 주입 ===== */
+        // 색상
+        bar.style.backgroundColor = P.bg;
+        if (P.adBgType === 'solid') {
+          ad.style.background = P.adBgSolid;
+        } else if (P.adBgType === 'gradient') {
+          ad.style.background = `linear-gradient(to right, ${P.adBgStart}, ${P.adBgStart} 80%, ${P.adBgEnd})`;
+        }
+        ad.style.height = P.baseHeight + 'px';
+
+        // 이미지 & 텍스트
+        logo.src = P.logo;
+        mainProduct.src = P.product;
+        ctaBtn.textContent = P.ctaText;
+        baseTextEl.innerHTML = buildBaseTextHTML(P.baseText);
+
+        // 크기/맞춤 옵션
+        applyDim(logo, P.logoW, P.logoH, P.logoFit);
+        applyDim(mainProduct, P.productW, P.productH, P.productFit);
+
+        // 접근성
+        if (P.click) ad.setAttribute('role', 'button');
+
+        // CTA 동작
+        ctaBtn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          if (P.cta && P.cta !== '#') window.open(P.cta, '_blank', 'noopener');
+        });
+
+        // 배너 전체 클릭(옵션)
+        if (P.click) {
+          ad.addEventListener('click', () => window.open(P.click, '_blank', 'noopener'));
+        }
+
+        // 노출 트래킹
+        if (P.imp) {
+          const t = new Image();
+          t.src = P.imp;
+        }
+
+        // 자동 숨김
+        if (P.autohide > 0) {
+          setTimeout(() => {
+            ad.style.display = 'none';
+            bar.style.display = 'none';
+          }, P.autohide * 1000);
+        }
+
+        /* ===== 로드 → 기본 애니메이션 시퀀스 ===== */
+        window.addEventListener('load', () => {
+          bar.classList.add('visible');
+          ad.classList.add('visible');
+
+          setTimeout(() => logo.classList.add('to-left'), P.tLogoLeft);
+          setTimeout(() => mainProduct.classList.add('show'), P.tProductUp);
+          setTimeout(() => center.classList.add('show'), P.tCenterShow);
+          setTimeout(() => mainProduct.classList.add('swing'), P.tSwingStart);
+
+          // CTA 흔들림
+          let shakeInterval = null;
+          const startShake = () => {
+            if (!P.shake || shakeInterval) return;
+            shakeInterval = setInterval(() => {
+              ctaBtn.classList.add('gentle-shake');
+              setTimeout(() => ctaBtn.classList.remove('gentle-shake'), 1000);
+            }, 2000);
+          };
+          const stopShake = () => {
+            if (shakeInterval) {
+              clearInterval(shakeInterval);
+              shakeInterval = null;
+              ctaBtn.classList.remove('gentle-shake');
+            }
+          };
+          startShake();
+          ctaBtn.addEventListener('mouseenter', stopShake);
+          ctaBtn.addEventListener('mouseleave', startShake);
+        });
+
+        /* ===== 호버/터치 인터랙션 ===== */
+        let hoverActive = false;
+
+        // 데스크톱: mouseenter/leave / 모바일: 탭 토글
+        const enter = () => {
+          hoverActive = true;
+          ad.style.height = P.hoverHeight + 'px';
+
+          logo.classList.add('hidden');
+          mainProduct.classList.add('hidden');
+
+          // 호버 중앙 콘텐츠 구성
+          const smallLogo = P.hoverLogo || P.logo;
+          center.classList.add('hover-content');
+          center.innerHTML = `
+          ${
+            smallLogo
+              ? `<img src="${escapeHtml(
+                  smallLogo
+                )}" alt="" style="width:42px;margin-bottom:10px" />`
+              : ''
+          }
+          <div class="ad-text">
+            ${buildDottedWordsHTML(P.hoverWord1)} ${buildDottedWordsHTML(
+            P.hoverWord2
+          )}로 가볍게 마시자!
+          </div>
+          <div class="ad-text">${escapeHtml(P.hoverLineBottom)}</div>
+        `;
+          requestAnimationFrame(() => center.classList.add('show'));
+
+          // 좌/우 제품 + 라디얼 하이라이트
+          addSideDecorationsOnce();
+        };
+
+        const leave = () => {
+          hoverActive = false;
+          ad.style.height = P.baseHeight + 'px';
+
+          logo.classList.remove('hidden');
+          mainProduct.classList.remove('hidden');
+
+          removeEl('.radial-bg');
+          removeEl('.ad-product.left-in');
+          removeEl('.ad-product.right-in');
+
+          center.classList.remove('hover-content', 'show');
+          center.innerHTML = '';
+          center.appendChild(baseTextEl);
+          center.appendChild(ctaBtn);
+          baseTextEl.innerHTML = buildBaseTextHTML(P.baseText);
+        };
+
+        ad.addEventListener('mouseenter', enter);
+        ad.addEventListener('mouseleave', leave);
+
+        // 터치/모바일 토글
+        ad.addEventListener('click', (e) => {
+          // CTA 클릭은 이미 stopPropagation 함
+          if (!P.click) {
+            // 배너 전체 클릭이 없는 경우에만 토글로 사용 (클릭 이동과 충돌 방지)
+            if (!hoverActive) enter();
+            else leave();
+          }
+        });
+
+        /* ===== 유틸 함수 ===== */
+        function applyDim(el, w, h, fit) {
+          if (!el) return;
+          if (w) el.style.width = w;
+          if (h) el.style.height = h;
+          if (fit) el.style.objectFit = fit;
+        }
+        function escapeHtml(s) {
+          return String(s)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
+        }
+        function buildBaseTextHTML(txt) {
+          // 기본 문구 중 '가벼움', '한 팩' 같은 단어를 강조하고 싶다면 highlight 파라미터 확장 가능.
+          // 여기서는 단순히 전체 문구를 안전하게 출력.
+          const safe = escapeHtml(txt);
+          // 대표 문구에서 '가벼움', '한 팩'을 기본 강조 처리(옵션성)
+          return safe
+            .replace(/가벼움/g, '<span class="font-p">가벼움</span>')
+            .replace(/한 팩/g, '<span class="font-p">한 팩</span>');
+        }
+        function buildDottedWordsHTML(word) {
+          const chars = Array.from(String(word || ''));
+          return `<span class="word-dot">${chars
+            .map((ch) => `<span class="dot-top">${escapeHtml(ch)}</span>`)
+            .join('')}</span>`;
+        }
+        function removeEl(sel) {
+          const el = document.querySelector(sel);
+          if (el) el.remove();
+        }
+        function addSideDecorationsOnce() {
+          if (!hoverActive) return;
+          // Left
+          let left = document.querySelector('.ad-product.left-in');
+          if (!left) {
+            left = document.createElement('img');
+            left.className = 'ad-product left-in';
+            left.alt = '보조 제품';
+            left.src = P.leftProduct;
+            if (P.leftW) left.style.width = P.leftW;
+            if (P.leftH) left.style.height = P.leftH;
+            ad.appendChild(left);
+            setTimeout(() => left.classList.add('show'), 50);
+          }
+          // Right
+          let right = document.querySelector('.ad-product.right-in');
+          if (!right) {
+            right = document.createElement('img');
+            right.className = 'ad-product right-in';
+            right.alt = '보조 제품';
+            right.src = P.rightProduct;
+            if (P.rightW) right.style.width = P.rightW;
+            if (P.rightH) right.style.height = P.rightH;
+            ad.appendChild(right);
+
+            const rb = document.createElement('div');
+            rb.className = 'radial-bg';
+            ad.appendChild(rb);
+            setTimeout(() => {
+              right.classList.add('show');
+              rb.classList.add('show');
+            }, 50);
+          }
+        }
+      })();
+    </script>
+  </body>
+</html>
